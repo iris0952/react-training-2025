@@ -90,7 +90,7 @@
                                                 <td>{product.title}</td>
                                                 <td>{product.origin_price}</td>
                                                 <td>{product.price}</td>
-                                                <td>{product.is_enabled}</td>
+                                                <td>{product.is_enabled ? "啟用" : "未啟用"}</td>
                                                 <td><button type="button" className="btn btn-info" onClick={() => {setTempProduct(product)}}>查看細節</button></td>
                                             </tr>
                                         )
@@ -104,7 +104,6 @@
                                 <div className="card">
                                 <img src={tempProduct.imageUrl} className="card-img-top img-fluid" alt={tempProduct.title} />
                                 <div className="card-body">
-                                    <h3></h3>
                                     <h5 className="card-title">{tempProduct.title} <span className="badge text-bg-info">{tempProduct.category}</span></h5>
                                     <p className="card-text">{tempProduct.description}</p>
                                     <p className="card-text">商品描述：{tempProduct.title}</p>
