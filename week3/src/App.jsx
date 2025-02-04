@@ -90,7 +90,9 @@ function App() {
     checkUserLogin();
   }, [])
 
+
   const productModalRef = useRef(null);
+  const deleteProductModalRef = useRef(null);
   const [modalMode, setModalMode] = useState(null); //判斷當前動作是新增產品還是編輯產品，新增一個狀態來判斷
 
   useEffect(() => {
@@ -99,6 +101,9 @@ function App() {
       backdrop: false
     });//加上 backdrop: false 可以讓點及半透明灰時，不會關掉 Modal
     
+    new Modal(deleteProductModalRef.current, {
+      backdrop: false
+    });
   }, [])
 
   const handleOpenProductModal = (mode, product) => {
@@ -111,7 +116,10 @@ function App() {
         break;
       
       case 'edit':
-        setTempProduct(product);
+        setTempProduct({
+          ...product,
+          imagesUrl: product.imagesUrl ? [...product.imagesUrl] : [""], // 確保 imagesUrl 是陣列
+        });
         break;
 
       default:
@@ -126,6 +134,18 @@ function App() {
     modalInstance.hide();
   }
 
+  const handleOpenDelProductModal = (product) => {
+    setTempProduct(product);
+    const modalInstance = Modal.getInstance(deleteProductModalRef.current);
+    modalInstance.show();
+  }
+
+  const handleCloseDelProductModal = () => {
+    const modalInstance = Modal.getInstance(deleteProductModalRef.current);
+    modalInstance.hide();
+  }
+
+
   const [tempProduct, setTempProduct] = useState(defaultModalState);
   const handleModalInputChange = (e) => {
     const { name, value, checked, type } = e.target;
@@ -137,14 +157,104 @@ function App() {
 
   const handleImageChange = (e, index) => { 
     const {value} = e.target;   
-    const newImages = [...tempProduct.imagesUrl];
+    const newImages = tempProduct.imagesUrl ? [...tempProduct.imagesUrl] : [""]; // 確保有陣列
     newImages[index] = value;
 
-    setProducts({
-      ...tempProduct,
+    setTempProduct((prev) => ({
+      ...prev,
       imagesUrl: newImages
-    })
+    }));
   }
+
+  const handleAddImage = () => {
+    const newImages = tempProduct.imagesUrl ? [...tempProduct.imagesUrl, ""] : [""]; // 確保有陣列
+
+    setTempProduct((prev) => ({
+      ...prev,
+      imagesUrl: newImages
+    }));
+  }
+
+  const handleRemoveImage = () => {
+    const newImages = tempProduct.imagesUrl ? [...tempProduct.imagesUrl] : [""]; // 確保有陣列
+    newImages.pop();
+
+    setTempProduct((prev) => ({
+      ...prev,
+      imagesUrl: prev.imagesUrl.length > 1 ? prev.imagesUrl.slice(0, -1) : [""]
+    }));
+  }
+
+  const creatProduct = async () => {
+    try {
+      await axios.post(`${BASE_URL}/v2/api/${API_PATH}/admin/product`, { 
+        data: {
+          ...tempProduct,
+          origin_price: Number(tempProduct.origin_price),
+          price: Number(tempProduct.price),
+          is_enabled: tempProduct.is_enabled ? 1 : 0
+        } 
+      });
+    } catch (error) {
+      console.log(error);
+      alert('新增產品失敗');
+    }
+  }
+
+  const updateProduct = async () => {
+    try {
+      await axios.put(`${BASE_URL}/v2/api/${API_PATH}/admin/product/${tempProduct.id}`, { 
+        data: {
+          ...tempProduct,
+          origin_price: Number(tempProduct.origin_price),
+          price: Number(tempProduct.price),
+          is_enabled: tempProduct.is_enabled ? 1 : 0
+        } 
+      });
+    } catch (error) {
+      console.log(error);
+      alert('編輯產品失敗');
+    }
+  }
+
+  const handleUpdateProduct = async () => {
+    const apiCall = modalMode === 'create' ? creatProduct : updateProduct;
+
+    try {
+      await apiCall();
+      getProducts();
+      handleCloseProductModal();
+    } catch (error) {
+      alert('更新產品失敗');
+    }
+  }
+
+  const deleteProduct = async () => {
+    try {
+      await axios.delete(`${BASE_URL}/v2/api/${API_PATH}/admin/product/${tempProduct.id}`, { 
+        data: {
+          ...tempProduct,
+          origin_price: Number(tempProduct.origin_price),
+          price: Number(tempProduct.price),
+          is_enabled: tempProduct.is_enabled ? 1 : 0
+        } 
+      });
+    } catch (error) {
+      console.log(error);
+      alert('刪除產品失敗');
+    }
+  }
+
+  const handleDeleteProduct = async () => {
+    try {
+      await deleteProduct();
+      getProducts();
+      handleCloseDelProductModal();
+    } catch (error) {
+      alert('刪除產品失敗');
+    }
+  }
+
 
   return (
     <>
@@ -171,11 +281,11 @@ function App() {
                   <th scope="row">{product.title}</th>
                   <td>{product.origin_price}</td>
                   <td>{product.price}</td>
-                  <td>{product.is_enabled}</td>
+                  <td>{product.is_enabled ? (<span className="text-success">啟用</span>) : <span>未啟用</span>}</td>
                   <td>
                     <div className="btn-group">
                       <button type="button" className="btn btn-outline-primary btn-sm" onClick={()=> handleOpenProductModal('edit', product)}>編輯</button>
-                      <button type="button" className="btn btn-outline-danger btn-sm">刪除</button>
+                      <button type="button" className="btn btn-outline-danger btn-sm" onClick={()=>handleOpenDelProductModal(product)}>刪除</button>
                     </div>
                   </td>
                 </tr>
@@ -270,10 +380,11 @@ function App() {
                     ))}
                     <div className="btn-group w-100">
                       {tempProduct.imagesUrl?.length < 5 && tempProduct.imagesUrl[tempProduct.imagesUrl.length - 1] !== '' && (
-                        <button className="btn btn-outline-primary btn-sm w-100">新增圖片</button>
+                        <button className="btn btn-outline-primary btn-sm w-100" onClick={handleAddImage}>新增圖片</button>
                       )}
-                      
-                      <button className="btn btn-outline-danger btn-sm w-100">取消圖片</button>
+                      {tempProduct.imagesUrl.length > 1 && (
+                        <button className="btn btn-outline-danger btn-sm w-100" onClick={handleRemoveImage}>取消圖片</button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -406,8 +517,47 @@ function App() {
               <button type="button" className="btn btn-secondary" onClick={handleCloseProductModal}>
                 取消
               </button>
-              <button type="button" className="btn btn-primary">
+              <button type="button" className="btn btn-primary" onClick={handleUpdateProduct}>
                 確認
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        ref={deleteProductModalRef}
+        className="modal fade"
+        id="delProductModal"
+        tabIndex="-1"
+        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      >
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h1 className="modal-title fs-5">刪除產品</h1>
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+                onClick={handleCloseDelProductModal}
+              ></button>
+            </div>
+            <div className="modal-body">
+              你是否要刪除 
+              <span className="text-danger fw-bold">{tempProduct.title}</span>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleCloseDelProductModal}
+              >
+                取消
+              </button>
+              <button type="button" className="btn btn-danger" onClick={handleDeleteProduct}>
+                刪除
               </button>
             </div>
           </div>
